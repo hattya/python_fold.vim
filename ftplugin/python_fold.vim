@@ -230,7 +230,7 @@ function! s:logical_line_end(lnum)
 endfunction
 
 function! s:is_statement(lnum, col)
-  return synIDattr(synID(a:lnum, a:col, 1), 'name') !~? '\v^%(Comment|String)$'
+  return synIDattr(synID(a:lnum, a:col, 1), 'name') !~? '\v%(Comment|String)$'
 endfunction
 
 function! s:search_paren(lnum, col, flags)
