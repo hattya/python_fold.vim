@@ -168,63 +168,70 @@ endfunction
 
 function! s:logical_line_end(lnum)
   let [lnum, eof] = [a:lnum, line('$')]
-  let col = 0
+  let col = 1
   while lnum <= eof
     let line = getline(lnum)
-    if line =~# s:blank || line =~# s:comment
-      " blank or comment
-      break
-    elseif line =~# s:backslash
-      " line continuation
+    " blank or comment
+    if line =~# s:blank || line =~# s:comment | break | endif
+    " paren
+    let paren = 0
+    let new_col = col
+    while 1
+      let new_col = matchend(line, '\V(\|{\|[', new_col - 1)
+      if new_col == -1
+        break
+      elseif !s:is_statement(lnum, new_col)
+        let new_col += 1
+      else
+        " search paren
+        let pos = s:search_paren(lnum, new_col, 'Wn')
+        if pos == [0, 0]
+          " paren mismatch
+          return 0
+        elseif lnum < pos[0]
+          let paren = 1
+          let [lnum, col] = pos
+          break
+        else
+          let col = pos[1]
+          let new_col = col
+        endif
+      endif
+    endwhile
+    if paren | continue | endif
+    " triple-quoted string
+    let qqq = 0
+    let new_col = col
+    while 1
+      let new_col = matchend(line, '\v%("{3}|''{3})', new_col - 1)
+      if new_col == -1
+        break
+      elseif !s:is_statement(lnum, new_col - 3)
+        let new_col += 1
+      else
+        " search triple-quoted string
+        let pos = s:search_qqq_string(lnum, new_col, line[new_col - 3 : new_col - 1], 'Wen')
+        if pos == [0, 0]
+          " triple-quoted string mismatch
+          return 0
+        elseif lnum < pos[0]
+          let qqq = 1
+          let [lnum, col] = pos
+          break
+        else
+          let col = pos[1]
+          let new_col = col
+        endif
+      endif
+    endwhile
+    if qqq | continue | endif
+    " line continuation
+    if line =~# s:backslash
       let lnum += 1
       let col = 0
-    else
-      " paren
-      let paren = 0
-      while 1
-        let new_col = matchend(line, '\V(\|{\|[', col)
-        if new_col == -1 | break | endif
-        let col = new_col
-        if s:is_statement(lnum, col)
-          " search paren
-          let pos = s:search_paren(lnum, col, 'Wn')
-          if pos == [0, 0]
-            " paren mismatch
-            return 0
-          elseif lnum < pos[0]
-            let paren = 1
-            let [lnum, col] = pos
-            break
-          else
-            let col = pos[1]
-          endif
-        endif
-      endwhile
-      if !paren
-        " triple-quoted string
-        let qqq = 0
-        while 1
-          let new_col = matchend(line, '\v%("{3}|''{3})', col)
-          if new_col == -1 | break | endif
-          let col = new_col
-          if s:is_statement(lnum, col)
-            " search triple-quoted string
-            let pos = s:search_qqq_string(lnum, col, line[col - 3 : col - 1], 'Wn')
-            if pos == [0, 0]
-              " triple-quote mismatch
-              return 0
-            elseif lnum < pos[0]
-              let qqq = 1
-              let [lnum, col] = pos
-              break
-            else
-              let col = pos[1]
-            endif
-          endif
-        endwhile
-        if !qqq | break | endif
-      endif
+      continue
     endif
+    break
   endwhile
   return lnum
 endfunction
