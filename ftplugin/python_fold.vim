@@ -203,7 +203,7 @@ function! s:logical_line_end(lnum)
     let qqq = 0
     let new_col = col
     while 1
-      let new_col = matchend(line, '\v%("{3}|''{3})', new_col - 1)
+      let new_col = matchend(line, '\v\c[bu]=r=%("{3}|''{3})', new_col - 1)
       if new_col == -1
         break
       elseif !s:is_statement(lnum, new_col - 3)
